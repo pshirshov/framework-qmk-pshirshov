@@ -159,16 +159,6 @@ static bool is_led_pressed(uint8_t led_index) {
     return false;
 }
 
-// Check if LED has a non-transparent keycode on the given layer
-static bool led_has_keycode_on_layer(uint8_t led_index, uint8_t layer) {
-    uint8_t row, col;
-    if (!led_to_matrix(led_index, &row, &col)) {
-        return false; // Auxiliary LED not mapped to matrix, turn off
-    }
-    uint16_t keycode = keymap_key_to_keycode(layer, (keypos_t){.row = row, .col = col});
-    return keycode != KC_TRNS && keycode != KC_NO;
-}
-
 // Semantic colors for FN layer keys based on keycode (not LED index)
 // Returns true if LED has semantic color, sets r/g/b
 static bool get_fn_semantic_color(uint8_t led_index, uint8_t layer, uint8_t *r, uint8_t *g, uint8_t *b) {
@@ -180,15 +170,42 @@ static bool get_fn_semantic_color(uint8_t led_index, uint8_t layer, uint8_t *r, 
     uint16_t keycode = keymap_key_to_keycode(layer, (keypos_t){.row = row, .col = col});
 
     switch (keycode) {
-        // Red: Pause/Break (KC_PAUS == KC_BRK)
-        case KC_PAUS:
-            *r = 255; *g = 30; *b = 30;
+        // Green: Volume controls
+        case KC_MUTE:
+        case KC_VOLD:
+        case KC_VOLU:
+            *r = 50; *g = 255; *b = 50;
             return true;
 
-        // Yellow: System keys
+        // Purple: Media controls
+        case KC_MPRV:
+        case KC_MPLY:
+        case KC_MNXT:
+        case KC_MSEL:
+            *r = 180; *g = 50; *b = 255;
+            return true;
+
+        // Yellow: Brightness & system display
+        // Note: KC_SCRN is Framework custom keycode, handled via QK_KB range
+        case KC_BRID:
+        case KC_BRIU:
+        case KC_AIRP:
         case KC_SYRQ:
         case KC_SCRL:
             *r = 255; *g = 220; *b = 0;
+            return true;
+
+        // Blue: F-keys
+        case KC_F1: case KC_F2: case KC_F3: case KC_F4:
+        case KC_F5: case KC_F6: case KC_F7: case KC_F8:
+        case KC_F9: case KC_F10: case KC_F11: case KC_F12:
+            *r = 50; *g = 100; *b = 255;
+            return true;
+
+        // Red: Pause/Break (KC_PAUS == KC_BRK)
+        case KC_PAUS:
+        case KC_PSCR:
+            *r = 255; *g = 30; *b = 30;
             return true;
 
         // Cyan: RGB controls
@@ -206,8 +223,7 @@ static bool get_fn_semantic_color(uint8_t led_index, uint8_t layer, uint8_t *r, 
             *r = 0; *g = 255; *b = 255;
             return true;
 
-        // Orange: Dangerous (EE_CLR, QK_BOOT)
-        // Note: RGB_FZ is custom keycode, match by value range instead
+        // Orange: Dangerous (EE_CLR, QK_BOOT, FN_LOCK toggle)
         case EE_CLR:
         case QK_BOOT:
             *r = 255; *g = 140; *b = 0;
@@ -225,7 +241,7 @@ static bool get_fn_semantic_color(uint8_t led_index, uint8_t layer, uint8_t *r, 
             return true;
 
         default:
-            // Check for custom keycodes in SAFE_RANGE (RGB_FZ etc)
+            // Check for custom keycodes in SAFE_RANGE (RGB_FZ, FN_LOCK, etc)
             if (keycode >= QK_KB_0 && keycode <= QK_KB_31) {
                 *r = 255; *g = 140; *b = 0;
                 return true;
@@ -252,11 +268,18 @@ static bool FINGER_ZONES(effect_params_t* params) {
                 uint8_t val = rgb_matrix_get_val();
                 rgb_matrix_set_color(i, (sem_r * val) / 255, (sem_g * val) / 255, (sem_b * val) / 255);
                 continue;
-            } else if (!led_has_keycode_on_layer(i, current_layer)) {
-                rgb_matrix_set_color(i, 0, 0, 0);
-                continue;
             }
-            // Keys with functions but no semantic color keep their zone color
+            // Check if LED has matrix mapping - only turn off if mapped but no keycode
+            // Aux LEDs (no matrix mapping) keep their zone color
+            uint8_t row, col;
+            if (led_to_matrix(i, &row, &col)) {
+                uint16_t keycode = keymap_key_to_keycode(current_layer, (keypos_t){.row = row, .col = col});
+                if (keycode == KC_TRNS || keycode == KC_NO) {
+                    rgb_matrix_set_color(i, 0, 0, 0);
+                    continue;
+                }
+            }
+            // Keys with functions but no semantic color, and aux LEDs, keep zone color
         }
 
         // ESC LEDs (indices 23, 25) show mode: pink=F-keys, orange=media
