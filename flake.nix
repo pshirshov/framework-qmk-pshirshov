@@ -13,8 +13,8 @@
       # Fetch QMK with submodules
       framework-qmk = pkgs.fetchgit {
         url = "https://github.com/FrameworkComputer/qmk_firmware";
-        rev = "v0.2.9";
-        hash = "sha256-L0n/MyKIeo1f8FlrJnyPgi7BebnF1ky+2IFQxQB/JE0=";
+        rev = "v0.3.1";
+        hash = "sha256-xGk+vWCgDdb3G0BU4Gm95Nx43JoVeoUhwWKN9Lg2n2w=";
         fetchSubmodules = true;
       };
 

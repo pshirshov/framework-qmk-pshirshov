@@ -115,5 +115,5 @@ framework-qmk-7mind/
 
 ## Credits
 
-- Based on [Framework's QMK fork](https://github.com/FrameworkComputer/qmk_firmware) v0.2.9
+- Based on [Framework's QMK fork](https://github.com/FrameworkComputer/qmk_firmware) v0.3.1
 - QMK Firmware: https://qmk.fm
