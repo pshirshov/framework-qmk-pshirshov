@@ -169,63 +169,67 @@ static bool led_has_keycode_on_layer(uint8_t led_index, uint8_t layer) {
     return keycode != KC_TRNS && keycode != KC_NO;
 }
 
-// Semantic colors for FN layer keys
+// Semantic colors for FN layer keys based on keycode (not LED index)
 // Returns true if LED has semantic color, sets r/g/b
-static bool get_fn_semantic_color(uint8_t led_index, uint8_t *r, uint8_t *g, uint8_t *b) {
-    switch (led_index) {
-        // Red: Pause/Break (P, B)
-        case 60:  // P (KC_PAUS)
-        case 35:  // B (KC_BRK)
+static bool get_fn_semantic_color(uint8_t led_index, uint8_t layer, uint8_t *r, uint8_t *g, uint8_t *b) {
+    uint8_t row, col;
+    if (!led_to_matrix(led_index, &row, &col)) {
+        return false;
+    }
+
+    uint16_t keycode = keymap_key_to_keycode(layer, (keypos_t){.row = row, .col = col});
+
+    switch (keycode) {
+        // Red: Pause/Break (KC_PAUS == KC_BRK)
+        case KC_PAUS:
             *r = 255; *g = 30; *b = 30;
             return true;
 
-        // Yellow: System keys (S=SysRq, K=ScrollLock)
-        case 41:  // S (KC_SYRQ)
-        case 50:  // K (KC_SCRL)
+        // Yellow: System keys
+        case KC_SYRQ:
+        case KC_SCRL:
             *r = 255; *g = 220; *b = 0;
             return true;
 
-        // Cyan: RGB controls (W, E, R, T, Y, U, D, F, G, H, J)
-        case 3:   // W (RGB_TOG)
-        case 2:   // E (RGB_MOD)
-        case 4:   // R (RGB_HUI)
-        case 7:   // T (RGB_SAI)
-        case 8:   // Y (RGB_SPI)
-        case 6:   // U (RGB_VAI)
-        case 37:  // D (RGB_RMOD)
-        case 43:  // F (RGB_HUD)
-        case 39:  // G (RGB_SAD)
-        case 40:  // H (RGB_SPD)
-        case 49:  // J (RGB_VAD)
+        // Cyan: RGB controls
+        case RGB_TOG:
+        case RGB_MOD:
+        case RGB_RMOD:
+        case RGB_HUI:
+        case RGB_HUD:
+        case RGB_SAI:
+        case RGB_SAD:
+        case RGB_SPI:
+        case RGB_SPD:
+        case RGB_VAI:
+        case RGB_VAD:
             *r = 0; *g = 255; *b = 255;
             return true;
 
-        // Orange: Custom/Dangerous ([=RGB_FZ, ]=EE_CLR, \=QK_BOOT)
-        case 57:  // [ (RGB_FZ)
-        case 54:  // ] (EE_CLR)
-        case 55:  // \ (QK_BOOT)
+        // Orange: Dangerous (EE_CLR, QK_BOOT)
+        // Note: RGB_FZ is custom keycode, match by value range instead
+        case EE_CLR:
+        case QK_BOOT:
             *r = 255; *g = 140; *b = 0;
             return true;
 
-        // White: Backlight controls (C, Space)
-        case 31:  // C (BL_BRTG)
-        case 85:  // Space LEDs (BL_STEP)
-        case 86:
-        case 87:
-        case 94:
-        case 95:
-        case 96:
+        // White: Backlight controls
+        case BL_BRTG:
+        case BL_STEP:
             *r = 255; *g = 255; *b = 255;
             return true;
 
-        // Magenta: Insert (Del position)
-        case 71:  // Del LEDs -> INS
-        case 72:
-        case 73:
+        // Magenta: Insert
+        case KC_INS:
             *r = 255; *g = 0; *b = 255;
             return true;
 
         default:
+            // Check for custom keycodes in SAFE_RANGE (RGB_FZ etc)
+            if (keycode >= QK_KB_0 && keycode <= QK_KB_31) {
+                *r = 255; *g = 140; *b = 0;
+                return true;
+            }
             return false;
     }
 }
@@ -243,7 +247,7 @@ static bool FINGER_ZONES(effect_params_t* params) {
         // When FN held, use semantic colors or turn off inactive keys
         if (fn_active) {
             uint8_t sem_r, sem_g, sem_b;
-            if (get_fn_semantic_color(i, &sem_r, &sem_g, &sem_b)) {
+            if (get_fn_semantic_color(i, current_layer, &sem_r, &sem_g, &sem_b)) {
                 // Apply brightness
                 uint8_t val = rgb_matrix_get_val();
                 rgb_matrix_set_color(i, (sem_r * val) / 255, (sem_g * val) / 255, (sem_b * val) / 255);

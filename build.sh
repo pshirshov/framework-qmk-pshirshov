@@ -22,10 +22,10 @@ echo "==> Copying QMK source..."
 cp -r "${QMK_SOURCE}"/* "${BUILD_DIR}/"
 chmod -R u+w "${BUILD_DIR}"
 
-# Copy keymap
+# Copy keymap from local directory (not Nix store)
 echo "==> Copying finger_zones keymap..."
 mkdir -p "${BUILD_DIR}/keyboards/framework/ansi/keymaps/finger_zones"
-cp "${KEYMAP_DIR}/finger_zones"/* "${BUILD_DIR}/keyboards/framework/ansi/keymaps/finger_zones/"
+cp "${SCRIPT_DIR}/keymaps/finger_zones"/* "${BUILD_DIR}/keyboards/framework/ansi/keymaps/finger_zones/"
 
 # Build
 echo "==> Building firmware..."
