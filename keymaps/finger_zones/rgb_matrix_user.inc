@@ -169,6 +169,67 @@ static bool led_has_keycode_on_layer(uint8_t led_index, uint8_t layer) {
     return keycode != KC_TRNS && keycode != KC_NO;
 }
 
+// Semantic colors for FN layer keys
+// Returns true if LED has semantic color, sets r/g/b
+static bool get_fn_semantic_color(uint8_t led_index, uint8_t *r, uint8_t *g, uint8_t *b) {
+    switch (led_index) {
+        // Red: Pause/Break (P, B)
+        case 60:  // P (KC_PAUS)
+        case 35:  // B (KC_BRK)
+            *r = 255; *g = 30; *b = 30;
+            return true;
+
+        // Yellow: System keys (S=SysRq, K=ScrollLock)
+        case 41:  // S (KC_SYRQ)
+        case 50:  // K (KC_SCRL)
+            *r = 255; *g = 220; *b = 0;
+            return true;
+
+        // Cyan: RGB controls (W, E, R, T, Y, U, D, F, G, H, J)
+        case 3:   // W (RGB_TOG)
+        case 2:   // E (RGB_MOD)
+        case 4:   // R (RGB_HUI)
+        case 7:   // T (RGB_SAI)
+        case 8:   // Y (RGB_SPI)
+        case 6:   // U (RGB_VAI)
+        case 37:  // D (RGB_RMOD)
+        case 43:  // F (RGB_HUD)
+        case 39:  // G (RGB_SAD)
+        case 40:  // H (RGB_SPD)
+        case 49:  // J (RGB_VAD)
+            *r = 0; *g = 255; *b = 255;
+            return true;
+
+        // Orange: Custom/Dangerous ([=RGB_FZ, ]=EE_CLR, \=QK_BOOT)
+        case 57:  // [ (RGB_FZ)
+        case 54:  // ] (EE_CLR)
+        case 55:  // \ (QK_BOOT)
+            *r = 255; *g = 140; *b = 0;
+            return true;
+
+        // White: Backlight controls (C, Space)
+        case 31:  // C (BL_BRTG)
+        case 85:  // Space LEDs (BL_STEP)
+        case 86:
+        case 87:
+        case 94:
+        case 95:
+        case 96:
+            *r = 255; *g = 255; *b = 255;
+            return true;
+
+        // Magenta: Insert (Del position)
+        case 71:  // Del LEDs -> INS
+        case 72:
+        case 73:
+            *r = 255; *g = 0; *b = 255;
+            return true;
+
+        default:
+            return false;
+    }
+}
+
 static bool FINGER_ZONES(effect_params_t* params) {
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
 
@@ -179,10 +240,19 @@ static bool FINGER_ZONES(effect_params_t* params) {
     for (uint8_t i = led_min; i < led_max; i++) {
         uint8_t r, g, b;
 
-        // When FN held, turn off LEDs for keys without FN-layer functions
-        if (fn_active && !led_has_keycode_on_layer(i, current_layer)) {
-            rgb_matrix_set_color(i, 0, 0, 0);
-            continue;
+        // When FN held, use semantic colors or turn off inactive keys
+        if (fn_active) {
+            uint8_t sem_r, sem_g, sem_b;
+            if (get_fn_semantic_color(i, &sem_r, &sem_g, &sem_b)) {
+                // Apply brightness
+                uint8_t val = rgb_matrix_get_val();
+                rgb_matrix_set_color(i, (sem_r * val) / 255, (sem_g * val) / 255, (sem_b * val) / 255);
+                continue;
+            } else if (!led_has_keycode_on_layer(i, current_layer)) {
+                rgb_matrix_set_color(i, 0, 0, 0);
+                continue;
+            }
+            // Keys with functions but no semantic color keep their zone color
         }
 
         // ESC LEDs (indices 23, 25) show mode: pink=F-keys, orange=media
