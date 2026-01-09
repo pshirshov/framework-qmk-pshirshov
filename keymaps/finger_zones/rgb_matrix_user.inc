@@ -131,15 +131,26 @@ static const uint8_t PROGMEM zone_colors[7][3] = {
     {255,  30,  30},   // 6: Arrow keys   - Red
 };
 
+// Find matrix position for a given LED index, returns true if found
+static bool led_to_matrix(uint8_t led_index, uint8_t *row_out, uint8_t *col_out) {
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+            if (g_led_config.matrix_co[row][col] == led_index) {
+                *row_out = row;
+                *col_out = col;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // Check if LED at given index corresponds to a currently pressed key
 static bool is_led_pressed(uint8_t led_index) {
-    // g_led_config.matrix_co maps [row][col] -> led_index
-    // We need to find if any pressed key maps to this LED
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             if (matrix_is_on(row, col)) {
-                uint8_t led = g_led_config.matrix_co[row][col];
-                if (led == led_index) {
+                if (g_led_config.matrix_co[row][col] == led_index) {
                     return true;
                 }
             }
@@ -148,11 +159,31 @@ static bool is_led_pressed(uint8_t led_index) {
     return false;
 }
 
+// Check if LED has a non-transparent keycode on the given layer
+static bool led_has_keycode_on_layer(uint8_t led_index, uint8_t layer) {
+    uint8_t row, col;
+    if (!led_to_matrix(led_index, &row, &col)) {
+        return false; // Auxiliary LED not mapped to matrix, turn off
+    }
+    uint16_t keycode = keymap_key_to_keycode(layer, (keypos_t){.row = row, .col = col});
+    return keycode != KC_TRNS && keycode != KC_NO;
+}
+
 static bool FINGER_ZONES(effect_params_t* params) {
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
 
+    // Check if FN layer is active (_FN=1 or _FM=3)
+    uint8_t current_layer = get_highest_layer(layer_state);
+    bool fn_active = (current_layer == 1 || current_layer == 3);
+
     for (uint8_t i = led_min; i < led_max; i++) {
         uint8_t r, g, b;
+
+        // When FN held, turn off LEDs for keys without FN-layer functions
+        if (fn_active && !led_has_keycode_on_layer(i, current_layer)) {
+            rgb_matrix_set_color(i, 0, 0, 0);
+            continue;
+        }
 
         // ESC LEDs (indices 23, 25) show mode: pink=F-keys, orange=media
         if (i == 23 || i == 25) {

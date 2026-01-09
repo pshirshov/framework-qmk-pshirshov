@@ -28,6 +28,7 @@ A custom RGB effect that colors each key according to which finger should press 
 - **ESC indicates F-row mode**:
   - **Pink** = F-keys mode (F1-F12 default)
   - **Orange** = Media keys mode
+- **FN layer highlighting** - When Fn is held, only keys with assigned functions stay lit; unassigned keys turn off
 
 ### F-Row Behavior
 
