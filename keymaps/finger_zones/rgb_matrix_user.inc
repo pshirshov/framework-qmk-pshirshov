@@ -92,8 +92,8 @@ static const uint8_t PROGMEM g_led_zone[RGB_MATRIX_LED_COUNT] = {
     0,  // LED 69 (idx 68): Air (F11) - Pinky
     1,  // LED 70 (idx 69): 9 - Ring
     0,  // LED 71 (idx 70): App - Pinky
-    0,  // LED 72 (idx 71): Del (2nd LED) - Pinky
-    0,  // LED 73 (idx 72): Del (3rd LED) - Pinky
+    0,  // LED 72 (idx 71): PrtSc (2nd LED) - Pinky (NOT Del!)
+    0,  // LED 73 (idx 72): Del (2nd LED) - Pinky
     0,  // LED 74 (idx 73): Del - Pinky
     1,  // LED 75 (idx 74): Scn (F10) - Ring
     1,  // LED 76 (idx 75): . - Ring
@@ -140,7 +140,8 @@ static uint8_t get_primary_led(uint8_t led_index) {
         case 28: case 30: return 44;   // Caps aux -> Caps primary
         case 38: case 42: return 32;   // LShift aux -> LShift primary
         case 45: return 34;            // LCtrl aux -> LCtrl primary
-        case 71: case 72: return 73;   // Del aux -> Del primary
+        case 71: return 66;            // PrtSc aux -> PrtSc primary (NOT Del!)
+        case 72: return 73;            // Del aux -> Del primary
         case 64: return 65;            // Backspace aux -> Backspace primary
         case 53: return 56;            // Enter aux -> Enter primary
         case 80: case 82: case 83: return 92;  // RShift aux -> RShift primary
@@ -177,11 +178,27 @@ static bool is_led_pressed(uint8_t led_index) {
     return false;
 }
 
+// Check if LED index is a known F-row LED (for fallback when no matrix mapping)
+static bool is_frow_led(uint8_t led_index) {
+    switch (led_index) {
+        case 18: case 19: case 20: case 21: case 22: case 24: case 26:  // F1-F8 area
+        case 66: case 67: case 68: case 70: case 74:  // F9-F12, App area
+            return true;
+        default:
+            return false;
+    }
+}
+
 // Semantic colors for FN layer keys based on keycode (not LED index)
 // Returns true if LED has semantic color, sets r/g/b
 static bool get_fn_semantic_color(uint8_t led_index, uint8_t layer, uint8_t *r, uint8_t *g, uint8_t *b) {
     uint8_t row, col;
     if (!led_to_matrix(led_index, &row, &col)) {
+        // F-row LEDs without matrix mapping: show blue (F-key color) as fallback
+        if (is_frow_led(led_index)) {
+            *r = 50; *g = 100; *b = 255;
+            return true;
+        }
         return false;
     }
 
