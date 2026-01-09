@@ -131,6 +131,24 @@ static const uint8_t PROGMEM zone_colors[7][3] = {
     {255,  30,  30},   // 6: Arrow keys   - Red
 };
 
+// Map auxiliary LED indices to their primary LED (the one with matrix mapping)
+// Multi-LED keys need aux LEDs to follow primary's behavior
+static uint8_t get_primary_led(uint8_t led_index) {
+    switch (led_index) {
+        case 0: return 1;              // Tab aux -> Tab primary
+        case 23: return 25;            // ESC aux -> ESC primary
+        case 28: case 30: return 44;   // Caps aux -> Caps primary
+        case 38: case 42: return 32;   // LShift aux -> LShift primary
+        case 45: return 34;            // LCtrl aux -> LCtrl primary
+        case 71: case 72: return 73;   // Del aux -> Del primary
+        case 64: return 65;            // Backspace aux -> Backspace primary
+        case 53: return 56;            // Enter aux -> Enter primary
+        case 80: case 82: case 83: return 92;  // RShift aux -> RShift primary
+        case 85: case 86: case 87: case 95: case 96: return 94;  // Space aux -> Space primary
+        default: return led_index;     // Already primary or single-LED key
+    }
+}
+
 // Find matrix position for a given LED index, returns true if found
 static bool led_to_matrix(uint8_t led_index, uint8_t *row_out, uint8_t *col_out) {
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
@@ -262,24 +280,26 @@ static bool FINGER_ZONES(effect_params_t* params) {
 
         // When FN held, use semantic colors or turn off inactive keys
         if (fn_active) {
+            // For aux LEDs, check their primary LED's behavior
+            uint8_t primary = get_primary_led(i);
+
             uint8_t sem_r, sem_g, sem_b;
-            if (get_fn_semantic_color(i, current_layer, &sem_r, &sem_g, &sem_b)) {
-                // Apply brightness
+            if (get_fn_semantic_color(primary, current_layer, &sem_r, &sem_g, &sem_b)) {
+                // Apply brightness - aux LEDs get same color as primary
                 uint8_t val = rgb_matrix_get_val();
                 rgb_matrix_set_color(i, (sem_r * val) / 255, (sem_g * val) / 255, (sem_b * val) / 255);
                 continue;
             }
-            // Check if LED has matrix mapping - only turn off if mapped but no keycode
-            // Aux LEDs (no matrix mapping) keep their zone color
+            // Check primary LED's keycode - aux LEDs follow primary's on/off state
             uint8_t row, col;
-            if (led_to_matrix(i, &row, &col)) {
+            if (led_to_matrix(primary, &row, &col)) {
                 uint16_t keycode = keymap_key_to_keycode(current_layer, (keypos_t){.row = row, .col = col});
                 if (keycode == KC_TRNS || keycode == KC_NO) {
                     rgb_matrix_set_color(i, 0, 0, 0);
                     continue;
                 }
             }
-            // Keys with functions but no semantic color, and aux LEDs, keep zone color
+            // Keys with functions but no semantic color keep zone color
         }
 
         // ESC LEDs (indices 23, 25) show mode: pink=F-keys, orange=media
