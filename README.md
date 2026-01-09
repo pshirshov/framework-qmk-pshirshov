@@ -57,6 +57,18 @@ direnv allow   # or: nix develop
 
 Output: `framework_ansi_finger_zones.uf2`
 
+## VIA Configuration
+
+The firmware is compatible with Framework's VIA tool at https://keyboard.frame.work/
+
+**Linux users**: Install QMK udev rules first:
+```bash
+sudo curl -o /etc/udev/rules.d/50-qmk.rules \
+  https://raw.githubusercontent.com/qmk/qmk_firmware/master/util/udev/50-qmk.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+Then unplug/replug the keyboard.
+
 ## Flashing
 
 ### Enter Bootloader Mode
